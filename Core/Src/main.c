@@ -47,9 +47,6 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-extern const uint8_t garfield_128x64[];
-extern const uint8_t github_logo_64x64[];
-
 
 typedef enum {
   Lviv = 0,
@@ -110,24 +107,8 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   ssd1306_Init(); // Ініціалізація OLED
+  city_changed = 1;
 
-  ssd1306_Fill(Black);
-  ssd1306_SetCursor(0, 0);
-  ssd1306_WriteString("Black Pill OK!", Font_7x10, White);
-  ssd1306_UpdateScreen();
-
-  HAL_Delay(2000);
-
-  ssd1306_Fill(White);
-  ssd1306_DrawBitmap(0, 0, garfield_128x64, 128, 64, Black);
-  ssd1306_UpdateScreen();
-
-  HAL_Delay(2000);
-
-  ssd1306_Fill(Black);
-  ssd1306_DrawBitmap(32, 0, github_logo_64x64, 64, 64, White);
-  ssd1306_UpdateScreen();
-  HAL_Delay(3000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -137,10 +118,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-    // HAL_Delay(1000);
-    // HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-    // HAL_Delay(2000);
+    if (city_changed) 
+    {
+      city_changed = 0;
+
+      ssd1306_Fill(Black);
+      ssd1306_SetCursor(0, 0);
+      ssd1306_WriteString("Selected City:", Font_7x10, White);
+      
+      ssd1306_SetCursor(0, 20);
+      if (current_city == Lviv) {
+          ssd1306_WriteString("LVIV", Font_16x26, White);
+      } else {
+          ssd1306_WriteString("KYIV", Font_16x26, White);
+      }
+      
+      ssd1306_UpdateScreen();
+    }
   }
   /* USER CODE END 3 */
 }
@@ -291,6 +285,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
   /* USER CODE END MX_GPIO_Init_2 */
@@ -306,6 +304,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
     if ((current_time - last_interrupt_time) > 200)
     {
+      if (current_city == Lviv)
+      {
+        current_city = Kyiv;
+      } else{
+        current_city = Lviv;
+      }
+      city_changed = 1;
+
       HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
       last_interrupt_time = current_time;
     }
