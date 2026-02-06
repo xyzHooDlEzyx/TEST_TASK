@@ -49,3 +49,6 @@ rules.ninja
 
 # Logs
 *.log
+
+# Other
+*.sh
