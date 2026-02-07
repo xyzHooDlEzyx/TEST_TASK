@@ -46,7 +46,6 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/ssd1306.c
     Core/Src/ssd1306_fonts.c
-    Core/Src/ssd1306_tests.c
 )
 
 # Add include paths
@@ -67,4 +66,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
     # Add user defined libraries
+)
+
+#FPU support for printf
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    "-u _printf_float"
 )

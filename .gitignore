@@ -51,4 +51,4 @@ rules.ninja
 *.log
 
 # Other
-*.sh
+upload.sh

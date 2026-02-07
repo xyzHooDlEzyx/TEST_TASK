@@ -21,9 +21,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "icon.h"
+#include <string.h>
+#include <stdio.h>
 #include "ssd1306.h"
-#include "ssd1306_tests.h"
 #include "ssd1306_fonts.h"
+#include "stm32f4xx_hal_gpio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +59,13 @@ typedef enum {
 volatile City current_city = Lviv;
 volatile uint8_t city_changed = 0;
 
+float temperature = 0.0f;
+float windspeed = 0.0f;
+int weathercode = 0;
+int is_day = 0;
+
+volatile char rx_buffer[512];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,6 +76,10 @@ static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void updateDisplay();
+const char* getWeatherDesc(int code);
+const unsigned char* getWeatherIcon(int code);
 
 /* USER CODE END PFP */
 
@@ -107,6 +121,9 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   ssd1306_Init(); // Ініціалізація OLED
+
+  temperature = 22.5f;
+  windspeed = 10.3f;
   city_changed = 1;
 
   /* USER CODE END 2 */
@@ -118,22 +135,19 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+
     if (city_changed) 
     {
+      updateDisplay();
       city_changed = 0;
 
-      ssd1306_Fill(Black);
-      ssd1306_SetCursor(0, 0);
-      ssd1306_WriteString("Selected City:", Font_7x10, White);
+      if (!is_day) {
+        is_day = 1;
       
-      ssd1306_SetCursor(0, 20);
-      if (current_city == Lviv) {
-          ssd1306_WriteString("LVIV", Font_16x26, White);
       } else {
-          ssd1306_WriteString("KYIV", Font_16x26, White);
+        is_day = 0;
       }
-      
-      ssd1306_UpdateScreen();
     }
   }
   /* USER CODE END 3 */
@@ -295,6 +309,105 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART1) 
+  {
+    // Обробка отриманих даних погоди в rx_buffer
+    // Наприклад, можна парсити JSON та оновлювати дисплей
+
+    // Після обробки даних, знову запустити прийом
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, sizeof(rx_buffer));
+  }
+}
+
+void parseWeatherData(const char* json) {
+
+  const char* cw = strstr(json, "\"current_weather\":{");
+  if (!cw) {
+    return;
+  }
+  
+  char *p;
+
+  p = strstr(cw, "\"temperature\":");
+  if (p) {
+    sscanf(p, "\"temperature\":%f", &temperature);
+  }
+  p = strstr(cw, "\"windspeed\":");
+  if (p) {
+    sscanf(p, "\"windspeed\":%f", &windspeed);
+  }
+
+  p = strstr(cw, "\"weathercode\":");
+  if (p) {
+    sscanf(p, "\"weathercode\":%d", &weathercode);
+  }
+
+  p = strstr(cw, "\"is_day\":");
+  if (p) {
+    sscanf(p, "\"is_day\":%d", &is_day);
+  }
+}
+
+void updateDisplay() {
+  ssd1306_Fill(Black);
+  ssd1306_SetCursor(0, 0);
+  ssd1306_WriteString("City:", Font_7x10, White);
+  
+  ssd1306_SetCursor(35, 0);
+  ssd1306_WriteString(current_city == Lviv ? "LVIV" : "KYIV", Font_7x10, White);
+
+  ssd1306_DrawBitmap(104, 0, is_day ? day : night, 24, 24, White);
+  ssd1306_DrawBitmap(104, 30, (uint8_t*)getWeatherIcon(weathercode), 24, 24, White);
+
+  int t_int = (int)temperature;
+  int t_dec = (int)((temperature - (float)t_int) * 10.0f);
+  if (t_dec < 0) t_dec = -t_dec; 
+
+  char temp_str[35];
+
+  sprintf(temp_str, "Temp:%d.%d C", t_int, t_dec);
+  ssd1306_SetCursor(0, 10);
+  ssd1306_WriteString(temp_str, Font_7x10, White);
+
+  int w_int = (int)windspeed;
+  int w_dec = (int)((windspeed - (float)w_int) * 10.0f);
+  if (w_dec < 0) w_dec = -w_dec;
+
+  sprintf(temp_str, "Wind:%d.%d km/h", w_int, w_dec);
+  ssd1306_SetCursor(0, 20);
+  ssd1306_WriteString(temp_str, Font_7x10, White);
+
+  ssd1306_SetCursor(0, 30);
+  sprintf(temp_str, "%s", getWeatherDesc(weathercode));
+  ssd1306_WriteString(temp_str, Font_7x10, White);
+
+  ssd1306_UpdateScreen();
+}
+
+const char* getWeatherDesc(int code) {  
+  if (code == 0) return "Clear";
+  if (code >= 1 && code <= 3) return "Cloudy";
+  if (code >= 45 && code <= 48) return "Foggy";
+  if (code >= 51 && code <= 55) return "Drizzle";
+  if (code >= 61 && code <= 65) return "Rainy";
+  if (code >= 71 && code <= 77) return "Snowy";
+  if (code >= 95) return "Thunderstorm";
+  return "Unknown";
+}
+
+const unsigned char* getWeatherIcon(int code) {
+  if (code == 0) return clearSky;
+  if (code >= 1 && code <= 3) return cloud;
+  if (code >= 45 && code <= 48) return fog;
+  if (code >= 51 && code <= 55) return drizzle;
+  if (code >= 61 && code <= 65) return rain;
+  if (code >= 71 && code <= 77) return snow;
+  if (code >= 95) return thunderstorm;
+  return cloud;
+}
+
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if (GPIO_Pin == GPIO_PIN_0)
