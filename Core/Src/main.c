@@ -22,11 +22,15 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "icon.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
+#include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
+#include "stm32f4xx_hal_uart.h"
+#include "sim800.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,12 +63,23 @@ typedef enum {
 volatile City current_city = Lviv;
 volatile uint8_t city_changed = 0;
 
+int year, month, day_n, hour, minute;
+
+
 float temperature = 0.0f;
 float windspeed = 0.0f;
 int weathercode = 0;
 int is_day = 0;
 
-volatile char rx_buffer[512];
+uint16_t update_timer = 20000;
+
+bool initialized = false;
+
+volatile char rx_byte;
+char rx_line[512];
+uint16_t line_idx = 0;
+
+uint32_t last_weather_update = 0;
 
 /* USER CODE END PV */
 
@@ -78,6 +93,8 @@ static void MX_I2C1_Init(void);
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void updateDisplay();
+void parseWeatherData(const char* json);
+
 const char* getWeatherDesc(int code);
 const unsigned char* getWeatherIcon(int code);
 
@@ -120,11 +137,12 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  ssd1306_Init(); // Ініціалізація OLED
+  ssd1306_Init();
+  sim800_init();
+  HAL_UART_Receive_IT(&huart1, (uint8_t*)&rx_byte, 1);
 
-  temperature = 22.5f;
-  windspeed = 10.3f;
-  city_changed = 1;
+  // temperature = 22.5f;
+  // windspeed = 10.3f;
 
   /* USER CODE END 2 */
 
@@ -136,19 +154,26 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+    if (!initialized) {
+      ssd1306_SetCursor(0, 50);
+      ssd1306_WriteString("Updating...", Font_7x10, White);
+      ssd1306_UpdateScreen();
+      sim800_get_weather("Lviv");
+      initialized = true;
+      last_weather_update = HAL_GetTick();
+    }
 
     if (city_changed) 
     {
-      updateDisplay();
+      sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
       city_changed = 0;
-
-      if (!is_day) {
-        is_day = 1;
-      
-      } else {
-        is_day = 0;
-      }
+      last_weather_update = HAL_GetTick();
     }
+    if (HAL_GetTick() - last_weather_update > update_timer) {
+      sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
+      last_weather_update = HAL_GetTick();
+    }
+
   }
   /* USER CODE END 3 */
 }
@@ -313,11 +338,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART1) 
   {
-    // Обробка отриманих даних погоди в rx_buffer
-    // Наприклад, можна парсити JSON та оновлювати дисплей
-
-    // Після обробки даних, знову запустити прийом
-    HAL_UART_Receive_IT(&huart1, (uint8_t*)rx_buffer, sizeof(rx_buffer));
+    if (rx_byte == '\n' || rx_byte == '\r') {
+      if (line_idx > 0) {
+        rx_line[line_idx] = '\0';
+        if (strstr(rx_line, "current_weather")) {
+          parseWeatherData(rx_line);
+          city_changed = 1;
+        }
+                
+        line_idx = 0;
+      }
+    } else {
+      if (line_idx < 511) {
+        rx_line[line_idx++] = rx_byte;
+      } else {
+        line_idx = 0;
+      }
+    }
+    HAL_UART_Receive_IT(&huart1, (uint8_t*)&rx_byte, 1);
   }
 }
 
@@ -329,28 +367,41 @@ void parseWeatherData(const char* json) {
   }
   
   char *p;
-
+  p = strstr(cw, "\"time\":");
+  if (p) {
+    sscanf(p, "\"time\":\"%d-%d-%dT%d:%d\"", &year, &month, &day_n, &hour, &minute);
+    hour+=2;
+    if (hour >= 24) {
+      hour -= 24;
+      day_n += 1;
+    }
+  }
   p = strstr(cw, "\"temperature\":");
   if (p) {
-    sscanf(p, "\"temperature\":%f", &temperature);
+    sscanf(p, "\"temperature\": %f", &temperature);
   }
   p = strstr(cw, "\"windspeed\":");
   if (p) {
-    sscanf(p, "\"windspeed\":%f", &windspeed);
+    sscanf(p, "\"windspeed\": %f", &windspeed);
   }
 
   p = strstr(cw, "\"weathercode\":");
   if (p) {
-    sscanf(p, "\"weathercode\":%d", &weathercode);
+    sscanf(p, "\"weathercode\": %d", &weathercode);
   }
 
   p = strstr(cw, "\"is_day\":");
   if (p) {
-    sscanf(p, "\"is_day\":%d", &is_day);
+    sscanf(p, "\"is_day\": %d", &is_day);
   }
+
+  updateDisplay();
 }
 
 void updateDisplay() {
+  char temp_str[35];
+
+
   ssd1306_Fill(Black);
   ssd1306_SetCursor(0, 0);
   ssd1306_WriteString("City:", Font_7x10, White);
@@ -361,11 +412,14 @@ void updateDisplay() {
   ssd1306_DrawBitmap(104, 0, is_day ? day : night, 24, 24, White);
   ssd1306_DrawBitmap(104, 30, (uint8_t*)getWeatherIcon(weathercode), 24, 24, White);
 
+  sprintf(temp_str, "%02d-%02d %02d:%02d", day_n, month, hour, minute);
+  ssd1306_SetCursor(0, 40);
+  ssd1306_WriteString(temp_str, Font_7x10, White);
+
   int t_int = (int)temperature;
   int t_dec = (int)((temperature - (float)t_int) * 10.0f);
   if (t_dec < 0) t_dec = -t_dec; 
 
-  char temp_str[35];
 
   sprintf(temp_str, "Temp:%d.%d C", t_int, t_dec);
   ssd1306_SetCursor(0, 10);
