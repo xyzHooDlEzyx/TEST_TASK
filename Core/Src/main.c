@@ -165,8 +165,12 @@ int main(void)
 
     if (city_changed) 
     {
-      sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
       city_changed = 0;
+      ssd1306_Fill(Black);
+      ssd1306_SetCursor(0, 50);
+      ssd1306_WriteString("Changing City...", Font_7x10, White);
+      ssd1306_UpdateScreen();
+      sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
       last_weather_update = HAL_GetTick();
     }
     if (HAL_GetTick() - last_weather_update > update_timer) {
@@ -343,7 +347,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         rx_line[line_idx] = '\0';
         if (strstr(rx_line, "current_weather")) {
           parseWeatherData(rx_line);
-          city_changed = 1;
+          // city_changed = 1;
         }
                 
         line_idx = 0;
@@ -396,6 +400,8 @@ void parseWeatherData(const char* json) {
   }
 
   updateDisplay();
+  memset(rx_line, 0, sizeof(rx_line));
+  line_idx = 0;
 }
 
 void updateDisplay() {
@@ -412,9 +418,14 @@ void updateDisplay() {
   ssd1306_DrawBitmap(104, 0, is_day ? day : night, 24, 24, White);
   ssd1306_DrawBitmap(104, 30, (uint8_t*)getWeatherIcon(weathercode), 24, 24, White);
 
-  sprintf(temp_str, "%02d-%02d %02d:%02d", day_n, month, hour, minute);
-  ssd1306_SetCursor(0, 40);
+  sprintf(temp_str, "%02d:%02d", hour, minute);
+  ssd1306_SetCursor(0, 10);
+  ssd1306_WriteString(temp_str, Font_11x18, White);
+  ssd1306_SetCursor(60, 14);
+  sprintf(temp_str, "%02d-%02d", day_n, month);
   ssd1306_WriteString(temp_str, Font_7x10, White);
+
+
 
   int t_int = (int)temperature;
   int t_dec = (int)((temperature - (float)t_int) * 10.0f);
@@ -422,7 +433,7 @@ void updateDisplay() {
 
 
   sprintf(temp_str, "Temp:%d.%d C", t_int, t_dec);
-  ssd1306_SetCursor(0, 10);
+  ssd1306_SetCursor(0, 28);
   ssd1306_WriteString(temp_str, Font_7x10, White);
 
   int w_int = (int)windspeed;
@@ -430,10 +441,10 @@ void updateDisplay() {
   if (w_dec < 0) w_dec = -w_dec;
 
   sprintf(temp_str, "Wind:%d.%d km/h", w_int, w_dec);
-  ssd1306_SetCursor(0, 20);
+  ssd1306_SetCursor(0, 38);
   ssd1306_WriteString(temp_str, Font_7x10, White);
 
-  ssd1306_SetCursor(0, 30);
+  ssd1306_SetCursor(0, 48);
   sprintf(temp_str, "%s", getWeatherDesc(weathercode));
   ssd1306_WriteString(temp_str, Font_7x10, White);
 
