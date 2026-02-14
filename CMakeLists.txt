@@ -47,6 +47,8 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/ssd1306.c
     Core/Src/ssd1306_fonts.c
     Core/Src/sim800.c
+    Core/Src/parse_weather.c
+    Core/Src/display_helper.c
 )
 
 # Add include paths

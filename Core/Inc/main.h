@@ -41,7 +41,10 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-
+typedef enum {
+  Lviv = 0,
+  Kyiv = 1,
+} City;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
