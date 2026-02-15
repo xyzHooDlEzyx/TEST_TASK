@@ -28,7 +28,11 @@ static bool sim800_get_city_coords(const char* city, const char** lat, const cha
 
 void sim800_init() {
     sim800_send_command("AT", SIM800C_TIMEOUT_MS);
+    HAL_Delay(100);
+    sim800_send_command("AT", SIM800C_TIMEOUT_MS);
+    HAL_Delay(100);
     sim800_send_command("ATE0", SIM800C_TIMEOUT_MS);
+    HAL_Delay(100);
     sim800_send_command("AT+CPIN=\"9359\"", SIM800C_TIMEOUT_MS+4500);
 }
 
