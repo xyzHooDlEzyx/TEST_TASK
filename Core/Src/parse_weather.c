@@ -1,7 +1,4 @@
 #include "parse_weather.h"
-#include "ssd1306.h"
-#include "ssd1306_fonts.h"
-#include "sim800.h"
 #include <string.h>
 #include <stdio.h>
 

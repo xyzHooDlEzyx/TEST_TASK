@@ -4,7 +4,6 @@
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
 #include <stdio.h>
-#include <string.h>
 
 extern volatile City current_city;
 extern int year, month, day_n, hour, minute;
