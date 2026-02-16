@@ -23,10 +23,10 @@
 /* USER CODE BEGIN Includes */
 #include <stdint.h>
 #include <string.h>
-#include "ssd1306.h"
-#include "ssd1306_fonts.h"
+#include "n51.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_gpio.h"
+#include "stm32f4xx_hal_spi.h"
 #include "stm32f4xx_hal_uart.h"
 #include "sim800.h"
 /* USER CODE END Includes */
@@ -47,7 +47,7 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-I2C_HandleTypeDef hi2c1;
+SPI_HandleTypeDef hspi1;
 
 UART_HandleTypeDef huart1;
 
@@ -80,7 +80,7 @@ uint32_t last_weather_update = 0;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
-static void MX_I2C1_Init(void);
+static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
@@ -128,14 +128,15 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
-  MX_I2C1_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
-  ssd1306_Init();
+  reset();
+  HAL_Delay(10);
+  init();
+  clear();
   sim800_init();
-  HAL_UART_Receive_IT(&huart1, (uint8_t*)&rx_byte, 1);
 
-  // temperature = 22.5f;
-  // windspeed = 10.3f;
+  HAL_UART_Receive_IT(&huart1, (uint8_t*)&rx_byte, 1);
 
   /* USER CODE END 2 */
 
@@ -148,9 +149,8 @@ int main(void)
     /* USER CODE BEGIN 3 */
 
     if (!initialized) {
-      ssd1306_SetCursor(0, 50);
-      ssd1306_WriteString("Updating...", Font_7x10, White);
-      ssd1306_UpdateScreen();
+      set_cursor(0, 0);
+      print_string("Updating...");
       sim800_get_weather("Lviv");
       initialized = true;
       last_weather_update = HAL_GetTick();
@@ -159,10 +159,11 @@ int main(void)
     if (city_changed) 
     {
       city_changed = 0;
-      ssd1306_Fill(Black);
-      ssd1306_SetCursor(0, 50);
-      ssd1306_WriteString("Changing City...", Font_7x10, White);
-      ssd1306_UpdateScreen();
+      clear();
+      set_cursor(0, 0);
+      print_string("Changing");
+      set_cursor(0, 1);
+      print_string("City...");
       sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
       last_weather_update = HAL_GetTick();
     }
@@ -221,36 +222,40 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief I2C1 Initialization Function
+  * @brief SPI1 Initialization Function
   * @param None
   * @retval None
   */
-static void MX_I2C1_Init(void)
+static void MX_SPI1_Init(void)
 {
 
-  /* USER CODE BEGIN I2C1_Init 0 */
+  /* USER CODE BEGIN SPI1_Init 0 */
 
-  /* USER CODE END I2C1_Init 0 */
+  /* USER CODE END SPI1_Init 0 */
 
-  /* USER CODE BEGIN I2C1_Init 1 */
+  /* USER CODE BEGIN SPI1_Init 1 */
 
-  /* USER CODE END I2C1_Init 1 */
-  hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 400000;
-  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
-  hi2c1.Init.OwnAddress1 = 0;
-  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c1.Init.OwnAddress2 = 0;
-  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 10;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
     Error_Handler();
   }
-  /* USER CODE BEGIN I2C1_Init 2 */
+  /* USER CODE BEGIN SPI1_Init 2 */
 
-  /* USER CODE END I2C1_Init 2 */
+  /* USER CODE END SPI1_Init 2 */
 
 }
 
@@ -303,10 +308,12 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, RST_Pin|CE_Pin|LIGHT_Pin|DC_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -319,6 +326,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = GPIO_PIN_0;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : RST_Pin CE_Pin LIGHT_Pin DC_Pin */
+  GPIO_InitStruct.Pin = RST_Pin|CE_Pin|LIGHT_Pin|DC_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/

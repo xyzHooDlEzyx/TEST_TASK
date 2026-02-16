@@ -10,7 +10,7 @@ The firmware runs on an STM32F411 and uses a SIM800C LTE module to fetch weather
 
 - STM32F411
 - SIM800C (LTE/2G module)
-- N5110 LCD display (I used this lib:https://github.com/Zeldax64/Nokia-LCD5110-HAL)
+- N5110 LCD display
 - UART connection between MCU and SIM800C
 
 ## Build
