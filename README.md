@@ -10,7 +10,7 @@ The firmware runs on an STM32F411 and uses a SIM800C LTE module to fetch weather
 
 - STM32F411
 - SIM800C (LTE/2G module)
-- SSD1306 OLED display
+- SSD1306 OLED display (I used this lib:https://github.com/afiskon/stm32-ssd1306)
 - UART connection between MCU and SIM800C
 
 ## Build
