@@ -55,6 +55,9 @@ UART_HandleTypeDef huart1;
 
 volatile City current_city = Lviv;
 volatile uint8_t city_changed = 0;
+volatile uint8_t request_in_flight = 0;
+uint32_t request_started_at = 0;
+const uint32_t request_timeout_ms = 15000;
 
 int year, month, day_n, hour, minute;
 
@@ -87,6 +90,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void updateDisplay();
 void parseWeatherData(const char* json);
+void button_irq_enable(void);
+void button_irq_disable(void);
+void weather_request_begin(void);
+void weather_request_end(void);
 
 const char* getWeatherDesc(int code);
 const unsigned char* getWeatherIcon(int code);
@@ -148,15 +155,16 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-    if (!initialized) {
+    if (!initialized && !request_in_flight) {
       set_cursor(0, 0);
       print_string("Updating...");
+      weather_request_begin();
       sim800_get_weather("Lviv");
       initialized = true;
       last_weather_update = HAL_GetTick();
     }
 
-    if (city_changed) 
+    if (city_changed && !request_in_flight) 
     {
       city_changed = 0;
       clear();
@@ -164,12 +172,18 @@ int main(void)
       print_string("Changing");
       set_cursor(0, 1);
       print_string("City...");
+      weather_request_begin();
       sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
       last_weather_update = HAL_GetTick();
     }
-    if (HAL_GetTick() - last_weather_update > update_timer) {
+    if (HAL_GetTick() - last_weather_update > update_timer && !request_in_flight) {
+      weather_request_begin();
       sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
       last_weather_update = HAL_GetTick();
+    }
+    if (request_in_flight && (HAL_GetTick() - request_started_at > request_timeout_ms)) {
+      weather_request_end();
+      updateDisplay();
     }
 
   }
@@ -345,6 +359,32 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void button_irq_enable(void)
+{
+  __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+  NVIC_ClearPendingIRQ(EXTI0_IRQn);
+  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+}
+
+void button_irq_disable(void)
+{
+  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
+  __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
+}
+
+void weather_request_begin(void)
+{
+  request_in_flight = 1;
+  request_started_at = HAL_GetTick();
+  button_irq_disable();
+}
+
+void weather_request_end(void)
+{
+  request_in_flight = 0;
+  button_irq_enable();
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
   if (huart->Instance == USART1) 
@@ -374,10 +414,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if (GPIO_Pin == GPIO_PIN_0)
   {
+    if (request_in_flight) {
+      return;
+    }
     static uint32_t last_interrupt_time = 0;
     uint32_t current_time = HAL_GetTick();
 
-    if ((current_time - last_interrupt_time) > 200)
+    if ((current_time - last_interrupt_time) > 300)
     {
       if (current_city == Lviv)
       {

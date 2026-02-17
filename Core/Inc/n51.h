@@ -13,7 +13,7 @@ extern SPI_HandleTypeDef hspi1;
 
 void send_cmd(uint8_t cmd);
 
-void send_data(uint8_t data) ;
+void send_data_buffer(const uint8_t *data, uint16_t len);
 
 void send_char(uint8_t c) ;
 

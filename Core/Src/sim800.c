@@ -6,6 +6,7 @@
 
 extern UART_HandleTypeDef huart1;
 extern char rx_line[512];
+extern void weather_request_end(void);
 
 static bool sim800_get_city_coords(const char* city, const char** lat, const char** lon) {
   if (!city || !lat || !lon) {
@@ -91,6 +92,7 @@ void sim800_get_weather(const char* city) {
   sim800_send_command("AT+HTTPTERM", 1000);
   HAL_Delay(100);
   sim800_send_command("AT+SAPBR=0,1", 1000);
+  weather_request_end();
 }
 
 uint8_t wait_for_response(const char* resp, uint32_t timeout) {

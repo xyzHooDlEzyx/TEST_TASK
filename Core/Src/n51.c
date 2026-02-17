@@ -1,5 +1,7 @@
 #include "n51.h"
 #include <stdbool.h>
+#include <stdint.h>
+#include <string.h>
 
 void send_cmd(uint8_t cmd) {
   HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
@@ -8,26 +10,29 @@ void send_cmd(uint8_t cmd) {
   HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
 }
 
-void send_data(uint8_t data) {
+void send_data_buffer(const uint8_t *data, uint16_t len) {
   HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(DC_GPIO_Port, DC_Pin, GPIO_PIN_SET);
-  HAL_SPI_Transmit(&hspi1, &data, 1, 1000);
+  HAL_SPI_Transmit(&hspi1, (uint8_t *)data, len, 1000);
   HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_SET);
 }
 
 void send_char(uint8_t c) {
   if(c >= 0x20 && c <= 0x80) {
-    for (int i = 0; i <5; i++){
-      send_data(Symbols[c - 0x20][i]);
+    uint8_t buffer[6];
+    const uint8_t *tmp = Symbols[c - 0x20];
+    for (int i = 0; i < 5; i++){
+      buffer[i] = tmp[i];
     }
-    send_data(0x00);
+    buffer[5] = 0x00;
+    send_data_buffer(buffer, 6);
   }
 }
 
 void clear () {
-  for (int i = 0; i < 504; i++) {
-    send_data(0x00);
-  }
+  uint8_t blank[504];
+  memset(blank, 0x00, 504);
+  send_data_buffer(blank, 504);
 }
 
 void init(){
