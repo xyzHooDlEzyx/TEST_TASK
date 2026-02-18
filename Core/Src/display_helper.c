@@ -3,6 +3,7 @@
 #include "main.h"
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
+#include "stm32f4xx_hal.h"
 #include <stdio.h>
 
 extern volatile City current_city;
@@ -56,6 +57,15 @@ void updateDisplay() {
   sprintf(temp_str, "%s", getWeatherDesc(weathercode));
   ssd1306_WriteString(temp_str, Font_7x10, White);
 
+  ssd1306_UpdateScreen();
+}
+
+void error_display() {
+  ssd1306_Fill(Black);
+  ssd1306_SetCursor(0, 35);
+  ssd1306_WriteString("Please restart", Font_7x10, White);
+  ssd1306_SetCursor(20, 45);
+  ssd1306_WriteString("device", Font_7x10, White);
   ssd1306_UpdateScreen();
 }
 

@@ -87,16 +87,13 @@ static void MX_I2C1_Init(void);
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin);
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
-void updateDisplay();
-void parseWeatherData(const char* json);
-void button_irq_enable(void);
-void button_irq_disable(void);
-void weather_request_begin(void);
-void weather_request_end(void);
-
-const char* getWeatherDesc(int code);
-const unsigned char* getWeatherIcon(int code);
-
+extern void updateDisplay();
+extern void error_display();
+extern void parseWeatherData(const char* json);
+extern void button_irq_enable(void);
+extern void button_irq_disable(void);
+extern void weather_request_begin(void);
+extern void weather_request_end(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -354,6 +351,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         rx_line[line_idx] = '\0';
         if (strstr(rx_line, "current_weather")) {
           parseWeatherData(rx_line);
+        } else if (strstr(rx_line, "ERROR") && initialized) {
+          error_display();
         }
                 
         line_idx = 0;
