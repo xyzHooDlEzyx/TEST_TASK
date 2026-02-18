@@ -55,6 +55,16 @@ void updateDisplay() {
 
 }
 
+void error_display() {
+  clear();
+  set_cursor(0, 0);
+  print_string("Error fetching");
+  set_cursor(0, 1);
+  print_string("weather data");
+  set_cursor(0, 2);
+  print_string("Try resetting the device");
+}
+
 const char* getWeatherDesc(int code) {  
   if (code == 0) return "Clear";
   if (code >= 1 && code <= 3) return "Cloudy";
