@@ -88,6 +88,7 @@ void sim800_get_weather(const char* city) {
   sim800_send_command("AT+HTTPTERM", 1000);
   HAL_Delay(100);
   sim800_send_command("AT+SAPBR=0,1", 1000);
+  HAL_Delay(100);
   weather_request_end();
 }
 
