@@ -49,6 +49,7 @@ target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     Core/Src/sim800.c
     Core/Src/parse_weather.c
     Core/Src/display_helper.c
+    Core/Src/fool_protection.c
 )
 
 # Add include paths

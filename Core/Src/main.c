@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdint.h>
 #include <string.h>
+#include "fool_protection.h"
 #include "ssd1306.h"
 #include "ssd1306_fonts.h"
 #include "stm32f4xx_hal.h"
@@ -55,8 +56,6 @@ UART_HandleTypeDef huart1;
 
 volatile City current_city = Lviv;
 volatile uint8_t city_changed = 0;
-volatile uint8_t request_in_flight = 0;
-uint32_t request_started_at = 0;
 const uint32_t request_timeout_ms = 15000;
 
 int year, month, day_n, hour, minute;
@@ -345,31 +344,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void button_irq_enable(void)
-{
-  __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
-  NVIC_ClearPendingIRQ(EXTI0_IRQn);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
-}
-
-void button_irq_disable(void)
-{
-  HAL_NVIC_DisableIRQ(EXTI0_IRQn);
-  __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_0);
-}
-
-void weather_request_begin(void)
-{
-  request_in_flight = 1;
-  request_started_at = HAL_GetTick();
-  button_irq_disable();
-}
-
-void weather_request_end(void)
-{
-  request_in_flight = 0;
-  button_irq_enable();
-}
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
