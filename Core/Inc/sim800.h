@@ -3,6 +3,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_uart.h"
+#include <string.h>
+#include <stdio.h>
+#include "fool_protection.h"
 
 #define SIM800C_BUFFER_SIZE 1024
 #define SIM800C_TIMEOUT_MS 500

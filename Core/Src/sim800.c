@@ -1,8 +1,4 @@
 #include "sim800.h"
-#include "stm32f4xx_hal.h"
-#include "stm32f4xx_hal_uart.h"
-#include <string.h>
-#include <stdio.h>
 
 extern UART_HandleTypeDef huart1;
 extern char rx_line[512];
