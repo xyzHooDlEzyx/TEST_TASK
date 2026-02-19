@@ -30,8 +30,7 @@ void send_char(uint8_t c) {
 }
 
 void clear () {
-  uint8_t blank[504];
-  memset(blank, 0x00, 504);
+  static const uint8_t blank[504] = {0};
   send_data_buffer(blank, 504);
 }
 
