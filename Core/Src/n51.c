@@ -1,7 +1,6 @@
 #include "n51.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
 void send_cmd(uint8_t cmd) {
   HAL_GPIO_WritePin(CE_GPIO_Port, CE_Pin, GPIO_PIN_RESET);
