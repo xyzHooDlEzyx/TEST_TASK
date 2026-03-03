@@ -19,7 +19,13 @@ void updateDisplay() {
   print_string("City:");
 
   set_cursor(30, 0);
-  print_string(current_city == Lviv ? "LVIV" : "KYIV");
+  if(current_city == Lviv) {
+    print_string("LVIV");
+  } else if (current_city == Kyiv) {
+    print_string("KYIV");
+  } else if (current_city == Odesa) {
+    print_string("ODESA");
+  }
 
   sprintf(temp_str, "%02d:%02d", hour, minute);
   set_cursor(0, 1);

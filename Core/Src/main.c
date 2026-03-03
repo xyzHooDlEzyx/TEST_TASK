@@ -402,10 +402,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 
     if ((current_time - last_interrupt_time) > 300)
     {
-      if (current_city == Lviv)
-      {
+      if (current_city == Lviv) {
         current_city = Kyiv;
-      } else{
+      } else if (current_city == Kyiv) {
+        current_city = Odesa;
+      } else {
         current_city = Lviv;
       }
       city_changed = 1;
