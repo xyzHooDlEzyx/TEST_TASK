@@ -44,6 +44,7 @@ extern "C" {
 typedef enum {
   Lviv = 0,
   Kyiv = 1,
+  Odesa = 2
 } City;
 /* USER CODE END EC */
 

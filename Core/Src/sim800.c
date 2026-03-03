@@ -19,6 +19,11 @@ static bool sim800_get_city_coords(const char* city, const char** lat, const cha
     *lon = "30.52";
     return true;
   }
+  if (strcmp(city, "Odesa") == 0 || strcmp(city, "ODESA") == 0 || strcmp(city, "Odessa") == 0) {
+    *lat = "46.48";
+    *lon = "30.73";
+    return true;
+  }
 
   return false;
 }

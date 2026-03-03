@@ -170,12 +170,18 @@ int main(void)
       set_cursor(0, 1);
       print_string("City...");
       weather_request_begin();
-      sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
+      if (current_city == Lviv) {
+        sim800_get_weather("Lviv");
+      } else if (current_city == Kyiv) {
+        sim800_get_weather("Kyiv");
+      } else if (current_city == Odesa) {
+        sim800_get_weather("Odesa");
+      }
       last_weather_update = HAL_GetTick();
     }
     if (HAL_GetTick() - last_weather_update > update_timer && !request_in_flight) {
       weather_request_begin();
-      sim800_get_weather(current_city == Lviv ? "Lviv" : "Kyiv");
+      sim800_get_weather(current_city == Lviv ? "Lviv" : current_city == Kyiv ? "Kyiv" : "Odesa");
       last_weather_update = HAL_GetTick();
     }
     if (request_in_flight && (HAL_GetTick() - request_started_at > request_timeout_ms)) {
@@ -383,7 +389,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
     HAL_UART_Receive_IT(&huart1, (uint8_t*)&rx_byte, 1);
   }
 }
-
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
