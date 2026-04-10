@@ -24,6 +24,7 @@ rules.ninja
 *.su
 *.i
 *.s
+!startup_stm32f411xe.s
 *.lst
 *.lss
 *.axf
